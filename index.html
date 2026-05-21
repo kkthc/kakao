@@ -3,113 +3,225 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>카카오맵 장소 검색 서비스</title>
+    <title>⏱️ 타임 세이버 - 시간 절약 여행 지도</title>
+    <link rel="stylesheet" href="https://hangeul.pstatic.net/hangeul_static/css/nanum-square-round.css">
     <style>
-        /* 기본 스타일 초기화 */
+        /* 기본 스타일 초기화 및 라운드 서체 적용 */
         body, html {
             margin: 0;
             padding: 0;
             width: 100%;
             height: 100%;
-            font-family: 'Malgun Gothic', dotum, sans-serif;
-        }
-
-        /* 화면을 왼쪽과 오른쪽으로 2분할하는 컨테이너 */
-        #container {
+            font-family: 'NanumSquareRound', sans-serif;
+            background-color: #eae2d6; /* 가방 외벽 느낌의 옅은 베이지 배경 */
             display: flex;
-            width: 100%;
-            height: 100vh;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
         }
 
-        /* 왼쪽 사이드바 (검색창 + 결과 리스트) */
+        /* 🧳 여행 가방(캐리어) 전체틀 프레임 컨셉 */
+        #suitcase-frame {
+            display: flex;
+            width: 96%;
+            height: 94vh;
+            background: #ffffff;
+            border: 12px solid #a68059; /* 클래식한 가죽 가방 테두리 선 표현 */
+            border-radius: 35px; /* 전체적으로 동글동글한 가방 모양 */
+            box-shadow: 0 15px 35px rgba(62, 49, 34, 0.2), inset 0 0 15px rgba(0,0,0,0.05);
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* 왼쪽 사이드바: 가방 안 물품 정리 패킹 리스트 디자인 */
         #sidebar {
-            width: 350px;
+            width: 400px;
             height: 100%;
             display: flex;
             flex-direction: column;
-            border-right: 1px solid #ccc;
+            background: #fbfbf9; 
+            border-right: 6px dashed #d1c7bd; /* 가방 안쪽 지퍼/절취선 느낌 */
             box-sizing: border-box;
-            background: #ffffff;
             z-index: 10;
         }
 
-        /* 검색 영역 */
-        #search-box {
-            padding: 15px;
-            background: #f8f9fa;
-            border-bottom: 1px solid #eee;
-            display: flex;
-            gap: 8px;
-        }
-
-        #keyword {
-            flex: 1;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-
-        #search-btn {
-            padding: 10px 15px;
-            background: #fee500; /* 카카오 시그니처 옐로우 */
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
+        /* 가방 네임택 디자인의 상단 헤더 */
+        #nametag-header {
+            background: #e26d5c; /* 이쁜 파스텔 오렌지 레드 */
+            color: #ffffff;
+            padding: 16px;
             font-weight: bold;
-            font-size: 14px;
+            text-align: center;
+            font-size: 16px;
+            border-bottom: 4px solid #c95646;
+            letter-spacing: 0.5px;
         }
 
-        #search-btn:hover {
-            background: #fada0a;
+        /* 아기자기한 계산대/포스기 버튼 느낌의 4분할 탭 컨테이너 */
+        .tab-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            background: #f1ede4;
+            padding: 8px;
+            gap: 6px;
         }
 
-        /* 검색 결과 리스트 영역 (스크롤 가능) */
+        .tab-button {
+            padding: 10px 2px;
+            border: 2px solid #bdae9e;
+            border-radius: 12px; /* 버튼도 완전 동글동글하게 */
+            background: #ffffff;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: bold;
+            color: #5c534a;
+            text-align: center;
+            box-shadow: 0 3px 0 #bdae9e; /* 꾹꾹 누르고 싶게 만드는 입체감 효과 */
+            transition: all 0.1s;
+            font-family: 'NanumSquareRound', sans-serif;
+        }
+
+        /* 버튼을 클릭해서 아래로 쏙 들어가는 모션 구현 */
+        .tab-button:active {
+            transform: translateY(3px);
+            box-shadow: 0 0px 0 #bdae9e;
+        }
+
+        /* 4가지 테마별 탭 활성화 시 파스텔 포인트 색상 */
+        .tab-button.active.attraction {
+            background: #d4e6f1; border-color: #5499c7; color: #1f618d; box-shadow: 0 3px 0 #5499c7;
+        }
+        .tab-button.active.accommodation {
+            background: #d5f5e3; border-color: #58d68d; color: #1e8449; box-shadow: 0 3px 0 #58d68d;
+        }
+        .tab-button.active.restaurant {
+            background: #fdebd0; border-color: #f5b041; color: #b37d14; box-shadow: 0 3px 0 #f5b041;
+        }
+        .tab-button.active.timesaver {
+            background: #f5eeeb; border-color: #e26d5c; color: #c95646; box-shadow: 0 3px 0 #e26d5c;
+        }
+
+        /* 시간 절약 의사결정을 유도하는 알림판 영역 */
+        #guide-panel {
+            padding: 12px 14px;
+            background: #f5f3ec;
+            margin: 10px;
+            border-radius: 14px;
+            font-size: 12px;
+            color: #534e44;
+            line-height: 1.6;
+            border: 2px solid #e3dec9;
+        }
+
+        /* 여행 캐리어 안에 차곡차곡 담긴 영수증 테두리 형태의 결과 리스트 */
         #places-list {
             flex: 1;
             overflow-y: auto;
             margin: 0;
-            padding: 0;
+            padding: 10px;
             list-style: none;
+            background: #ffffff;
         }
 
         #places-list li {
-            padding: 15px;
-            border-bottom: 1px solid #eee;
+            padding: 14px;
+            margin-bottom: 8px;
+            background: #fffdfa;
+            border: 2px dashed #dfdacf; 
+            border-radius: 12px;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: transform 0.2s, background 0.2s;
         }
 
         #places-list li:hover {
-            background: #f1f3f5;
+            background: #faf7ee;
+            transform: scale(1.02); /* 마우스 올리면 통통 튀는 효과 */
         }
 
         #places-list li h5 {
             margin: 0 0 5px 0;
-            font-size: 16px;
-            color: #333;
+            font-size: 14px;
+            color: #383530;
         }
 
         #places-list li span {
-            font-size: 13px;
-            color: #666;
+            font-size: 11px;
+            color: #8c8577;
         }
 
-        /* 오른쪽 지도 영역 */
+        /* 오른쪽 지도 가방 내부 화면 영역 */
         #map {
             flex: 1;
             height: 100%;
+            border-left: 2px solid #e3dec9;
+        }
+
+        /* 🎨 기획서 반영: 동글동글한 커스텀 물방울 오버레이 마커 핀 디자인 */
+        .travel-marker-pin {
+            background: #ffffff;
+            border: 3px solid #333333;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg) translate(15px, -15px);
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: -3px 5px 10px rgba(0,0,0,0.22);
+            cursor: pointer;
+        }
+
+        /* 마커 내부 이모지는 똑바로 서있도록 시계방향 회전 역정렬 */
+        .travel-marker-pin span {
+            transform: rotate(45deg);
+            font-size: 18px;
+            display: block;
+        }
+
+        /* 카테고리 종류별 마커 테두리 색상 매핑 분리 */
+        .travel-marker-pin.attraction-border { border-color: #3498db; }
+        .travel-marker-pin.accommodation-border { border-color: #2ecc71; }
+        .travel-marker-pin.restaurant-border { border-color: #f39c12; }
+
+        /* 📍 기획서 반영: 실시간 탐색의 기준이 되는 내 현재 위치 전용 고유 마커 핀 */
+        .user-center-pin {
+            background: #e26d5c;
+            border: 3px solid #ffffff;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            box-shadow: 0 0 12px rgba(226, 109, 92, 0.8);
+            animation: pulseWave 2.2s infinite;
+        }
+
+        @keyframes pulseWave {
+            0% { box-shadow: 0 0 0 0 rgba(226, 109, 92, 0.7); }
+            70% { box-shadow: 0 0 0 12px rgba(226, 109, 92, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(226, 109, 92, 0); }
         }
     </style>
 </head>
 <body>
 
-    <div id="container">
+    <div id="suitcase-frame">
+        
         <div id="sidebar">
-            <div id="search-box">
-                <input type="text" id="keyword" placeholder="장소를 입력하세요 (예: 강남역)">
-                <button id="search-btn">검색</button>
+            <div id="nametag-header">
+                🧳 TIME-SAVER PACKING LIST
             </div>
+            
+            <div class="tab-container">
+                <button class="tab-button active attraction" id="btn-attraction">🗼 관광명소<br>(AT4)</button>
+                <button class="tab-button accommodation" id="btn-accommodation">🛌 추천숙박<br>(AD5)</button>
+                <button class="tab-button restaurant" id="btn-restaurant">🍽️ 로컬맛집<br>(FD6)</button>
+                <button class="tab-button timesaver" id="btn-timesaver">⏱️ 타임세이버<br>(ALL)</button>
+            </div>
+
+            <div id="guide-panel">
+                <strong>🚦 실시간 교통 흐름 분석 모드 작동 중</strong><br>
+                지도의 도로선 색상(🔴정체 / 🟢원활)을 확인하세요. 단순 공간적 거리보다 정체가 없는 도로변 인프라를 택하는 것이 이동 비용을 아끼는 합리적 지름길입니다.
+            </div>
+
             <ul id="places-list">
                 </ul>
         </div>
@@ -120,150 +232,260 @@
     <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=c25959bee4e8d99438d9beb94983a83b&libraries=services&autoload=false"></script>
     
     <script>
-        // 지도가 제대로 로드된 후에 코드가 실행되도록 보장
+        // 카카오 라이브러리가 메모리에 완벽 적재된 시점에 실행 환경 핸들링
         kakao.maps.load(function() {
             const mapContainer = document.getElementById('map'); 
             const mapOptions = {
-                center: new kakao.maps.LatLng(37.566826, 126.9786567), // 위치 권한 허용 전 기본 중심 좌표 (서울시청)
-                level: 5 // 지도 확대 레벨 요구사항 반영
+                center: new kakao.maps.LatLng(37.566826, 126.9786567), // 위치 권한 획득 이전 디폴트 기준 좌표 (서울시청)
+                level: 5 // 구체적 지시사항: 확대 레벨 5 설정
             };
 
-            // 지도 객체 생성
             const map = new kakao.maps.Map(mapContainer, mapOptions);
-
-            // 장소 검색을 도와주는 서비스 객체 생성
             const placesService = new kakao.maps.services.Places();
             
-            // 지도에 표시된 마커들을 관리할 배열
-            let markers = [];
+            let customOverlays = []; // 생성된 커스텀 마커 인스턴스들을 일괄 제어할 배열 객체
+            let activeInfoWindow = null; // 동시 다발적 말풍선 팝업 중첩을 차단하기 위한 통제 변수
+            let currentCenter = null; 
+            
+            // 전역 스위칭 기본 상태 데이터 셋팅
+            let currentCategory = "AT4"; 
+            let currentIcon = "🗼";
+            let currentBorderClass = "attraction-border";
+            let isTimeSaverMode = false; // 4번째 탭(동시 결합 모델) 작동 여부 감지용 플래그
 
-            // HTML이 열리면 곧바로 HTML5의 Geolocation으로 현재 위치를 요청
+            // 기획서 반영 요구사항: 실시간 교통 흐름 오버레이 레이어를 상시 결합 상태로 가동
+            map.addOverlayMapTypeId(kakao.maps.MapTypeId.TRAFFIC);
+
+            // 기획서 요구사항: Geolocation 기술 기반 유저 현재 내 위치 실시간 트래킹
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(function(position) {
-                    const lat = position.coords.latitude;  // 위도
-                    const lon = position.coords.longitude; // 경도
-                    const currentPosition = new kakao.maps.LatLng(lat, lon);
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    currentCenter = new kakao.maps.LatLng(lat, lon);
 
-                    // 지도의 중심을 사용자의 현재 위치로 변경
-                    map.setCenter(currentPosition);
+                    map.setCenter(currentCenter);
 
-                    // 현재 위치에 표시할 마커 생성
-                    const currentMarker = new kakao.maps.Marker({
-                        map: map,
-                        position: currentPosition
+                    // 내 위치 표시용 커스텀 오버레이 고정
+                    const userMarkerOverlay = new kakao.maps.CustomOverlay({
+                        position: currentCenter,
+                        content: '<div class="user-center-pin"></div>',
+                        xAnchor: 0.5,
+                        yAnchor: 0.5
                     });
+                    userMarkerOverlay.setMap(map);
 
-                    // 마커 위에 띄울 안내창 생성
-                    const infoWindow = new kakao.maps.InfoWindow({
-                        content: '<div style="padding:5px;font-size:12px;text-align:center;">현재 위치</div>'
-                    });
-                    infoWindow.open(map, currentMarker);
+                    // 기획서 요구사항: 카테고리로 엄격 자동 검색 프로세스 연동
+                    triggerCategoryPipeline(currentCategory);
 
                 }, function(error) {
-                    console.error("위치 권한을 가져오는데 실패했습니다.", error);
+                    console.error("위치 추적 레이더 통신 차단됨", error);
+                    currentCenter = map.getCenter();
+                    triggerCategoryPipeline(currentCategory);
                 });
             }
 
-            // 검색 버튼 및 엔터키 이벤트 바인딩
-            document.getElementById('search-btn').addEventListener('click', executeSearch);
-            document.getElementById('keyword').addEventListener('keypress', function(event) {
-                if (event.key === 'Enter') {
-                    executeSearch();
-                }
-            });
-
-            // 검색 실행 함수
-            function executeSearch() {
-                const keyword = document.getElementById('keyword').value;
-
-                if (!keyword.trim()) {
-                    alert('검색어를 입력해주세요!');
-                    return;
-                }
-
-                // 카카오맵 서비스를 통해 키워드 검색 요청
-                placesService.keywordSearch(keyword, searchCallback);
+            // 실시간 인프라 추적 파이프라인 제어기
+            function triggerCategoryPipeline(categoryCode) {
+                if (!currentCenter) return;
+                
+                // 내 중심점 기준 반경 3km 내 데이터 탐색 및 거리순(DISTANCE) 정렬
+                placesService.categorySearch(categoryCode, searchDataCallback, {
+                    location: currentCenter,
+                    radius: 3000, 
+                    sort: kakao.maps.services.SortBy.DISTANCE 
+                });
             }
 
-            // 장소검색이 완료되었을 때 실행되는 콜백 함수
-            function searchCallback(data, status, pagination) {
+            // 데이터 통신 완료 직후 응답 처리를 위한 피드백 함수
+            function searchDataCallback(data, status, pagination) {
                 if (status === kakao.maps.services.Status.OK) {
-                    // 정상적으로 검색이 완료되면 리스트와 마커를 화면에 표시
-                    displaySearchResults(data);
-                } else if (status === kakao.maps.services.Status.ZERO_RESULT) {
-                    alert('검색 결과가 존재하지 않습니다.');
-                } else if (status === kakao.maps.services.Status.ERROR) {
-                    alert('검색 결과 중 오류가 발생했습니다.');
+                    drawTravelDashboard(data);
+                } else {
+                    // 데이터 전무할 시 가방 안 리스트 알림 보정
+                    if(!isTimeSaverMode) {
+                        document.getElementById('places-list').innerHTML = '<li style="text-align:center;color:#999;font-size:12px;">주변 3km 내 인프라가 비어있습니다.</li>';
+                        clearAllActiveOverlays();
+                    }
                 }
             }
 
-            // 검색 결과를 화면(리스트+지도)에 보여주는 함수
-            function displaySearchResults(places) {
+            // 가방 안 리스트 뷰 및 오버레이 마커 맵 연동 렌더링 핵심 함수
+            function drawTravelDashboard(places) {
                 const listContainer = document.getElementById('places-list');
                 const bounds = new kakao.maps.LatLngBounds();
 
-                // 기존에 지도에 있던 검색 마커들과 리스트를 초기화
-                clearMarkers();
-                listContainer.innerHTML = '';
+                // 타임세이버 모드가 아닐 때(단일 탭 전환 시)에만 기존 마커 및 리스트 청소 지시 충족
+                if (!isTimeSaverMode) {
+                    clearAllActiveOverlays();
+                    listContainer.innerHTML = '';
+                }
+                
+                bounds.extend(currentCenter);
 
-                // 검색된 장소의 개수만큼 반복 처리
+                // 장소 개수만큼 순회 렌더링 기법 사용
                 for (let i = 0; i < places.length; i++) {
                     const placePosition = new kakao.maps.LatLng(places[i].y, places[i].x);
                     
-                    // 지도에 마커 추가
-                    const marker = createMarker(placePosition);
+                    // 기획서 요구사항: 카테고리별 분리 마커 구조 및 상세 커스텀 말풍선 탑재
+                    generateCozyOverlay(placePosition, places[i]);
                     
-                    // 왼쪽에 들어갈 HTML 리스트 아이템 생성
-                    const listItem = createListItem(places[i]);
-
-                    // 검색된 위치들을 모두 포함할 수 있도록 지도 범위 설정 객체에 추가
+                    const listItem = appendLuggageListItem(places[i]);
                     bounds.extend(placePosition);
 
-                    // 리스트 아이템을 클릭했을 때 해당 장소로 지도 이동 및 확대
+                    // 영수증 목록 카드 클릭 시 해당 상권의 정체 구간 여부를 관제하도록 지도 축소 이동
                     listItem.onclick = function() {
                         map.setCenter(placePosition);
-                        map.setLevel(3); // 상세히 볼 수 있도록 확대 레벨 변경
+                        map.setLevel(3);
                     };
 
                     listContainer.appendChild(listItem);
                 }
-
-                // 검색 결과들을 한눈에 볼 수 있도록 지도 화면 범위를 재조정
-                map.setBounds(bounds);
+                
+                // 타임세이버 다중 검색 결합 시 지도가 너무 요동치지 않도록 스케일 홀딩 처리
+                if (!isTimeSaverMode) {
+                    map.setBounds(bounds);
+                }
             }
 
-            // 마커를 생성하고 배열에 저장하는 함수
-            function createMarker(position) {
-                const marker = new kakao.maps.Marker({
-                    position: position,
-                    map: map
+            // ✨ 기획서 요구사항: 커스텀 말풍선 디자인을 내포한 수제 오버레이 핀 제작 모듈
+            function generateCozyOverlay(position, place) {
+                const pinNode = document.createElement('div');
+                pinNode.className = `travel-marker-pin ${currentBorderClass}`;
+                
+                const iconInner = document.createElement('span');
+                iconInner.innerText = currentIcon;
+                pinNode.appendChild(iconInner);
+
+                // 말풍선 디자인 박스 세부 마크업 동적 설계
+                const bubbleBox = document.createElement('div');
+                bubbleBox.style.cssText = 'background:#ffffff; padding:12px; border-radius:14px; border:2px solid #333; font-size:12px; box-shadow:0 4px 10px rgba(0,0,0,0.15); white-space:nowrap; font-family:NanumSquareRound;';
+                bubbleBox.innerHTML = `
+                    <strong style="color:#e26d5c; font-size:13px;">${place.place_name}</strong><br>
+                    <span style="color:#777; font-size:11px; display:inline-block; margin:4px 0;">${place.road_address_name || place.address_name}</span><br>
+                    <span style="color:#2ecc71; font-weight:bold;">⏱️ 내 위치 기준: ${place.distance}m</span>
+                `;
+
+                const infoBubble = new kakao.maps.InfoWindow({
+                    content: bubbleBox,
+                    removable: true
                 });
-                markers.push(marker);
-                return marker;
+
+                // 마커 클릭 레이아웃 이벤트 체이닝 구현
+                pinNode.addEventListener('click', function() {
+                    if (activeInfoWindow) {
+                        activeInfoWindow.close();
+                    }
+                    infoBubble.open(map, markerOverlayInstance);
+                    activeInfoWindow = infoBubble;
+                    map.setCenter(position);
+                });
+
+                const markerOverlayInstance = new kakao.maps.CustomOverlay({
+                    position: position,
+                    content: pinNode,
+                    yAnchor: 1 
+                });
+
+                markerOverlayInstance.setMap(map);
+                customOverlays.push(markerOverlayInstance); // 탭 이동 시 날리기 위해 적재 보관
             }
 
-            // 이전 검색 마커들을 지도에서 지우는 함수
-            function clearMarkers() {
-                for (let i = 0; i < markers.length; i++) {
-                    markers[i].setMap(null);
+            // 탭 전환 시 기존 마커 흔적을 완전히 소거하는 유틸리티 함수
+            function clearAllActiveOverlays() {
+                if (activeInfoWindow) {
+                    activeInfoWindow.close();
                 }
-                markers = [];
+                for (let i = 0; i < customOverlays.length; i++) {
+                    customOverlays[i].setMap(null);
+                }
+                customOverlays = [];
             }
 
-            // 검색 결과 리스트 Element를 만드는 함수
-            function createListItem(place) {
+            // 알림장 노트 스타일 목록 카드 엘리먼트 반환 함수
+            function appendLuggageListItem(place) {
                 const li = document.createElement('li');
+                const addressText = place.road_address_name ? place.road_address_name : place.address_name;
                 
-                let htmlContent = `<h5>${place.place_name}</h5>`;
-                if (place.road_address_name) {
-                    htmlContent += `<span>${place.road_address_name}</span>`;
-                } else {
-                    htmlContent += `<span>${place.address_name}</span>`;
-                }
-                
-                li.innerHTML = htmlContent;
+                li.innerHTML = `
+                    <h5>${currentIcon} ${place.place_name}</h5>
+                    <span>${addressText}</span><br>
+                    <span style="color:#e26d5c; font-size:11px; display:inline-block; margin-top:6px; font-weight:bold;">🏃 공간 도달거리: ${place.distance}m</span>
+                `;
                 return li;
             }
+
+            // 사이드바 포스기 버튼(탭) 스위칭 바인딩 구역
+            const btnAttraction = document.getElementById('btn-attraction');
+            const btnAccommodation = document.getElementById('btn-accommodation');
+            const btnRestaurant = document.getElementById('btn-restaurant');
+            const btnTimesaver = document.getElementById('btn-timesaver');
+
+            function resetAllTabUIStyles() {
+                btnAttraction.classList.remove('active');
+                btnAccommodation.classList.remove('active');
+                btnRestaurant.classList.remove('active');
+                btnTimesaver.classList.remove('active');
+            }
+
+            // 🗼 탭 1 통제 파이프
+            btnAttraction.addEventListener('click', function() {
+                isTimeSaverMode = false;
+                resetAllTabUIStyles();
+                btnAttraction.classList.add('active');
+                currentCategory = "AT4";
+                currentIcon = "🗼";
+                currentBorderClass = "attraction-border";
+                triggerCategoryPipeline(currentCategory);
+            });
+
+            // 🛌 탭 2 통제 파이프
+            btnAccommodation.addEventListener('click', function() {
+                isTimeSaverMode = false;
+                resetAllTabUIStyles();
+                btnAccommodation.classList.add('active');
+                currentCategory = "AD5";
+                currentIcon = "🛌";
+                currentBorderClass = "accommodation-border";
+                triggerCategoryPipeline(currentCategory);
+            });
+
+            // 🍽️ 탭 3 통제 파이프
+            btnRestaurant.addEventListener('click', function() {
+                isTimeSaverMode = false;
+                resetAllTabUIStyles();
+                btnRestaurant.classList.add('active');
+                currentCategory = "FD6";
+                currentIcon = "🍽️";
+                currentBorderClass = "restaurant-border";
+                triggerCategoryPipeline(currentCategory);
+            });
+
+            // ⏱️ 탭 4: 태희가 고안한 올인원 타임세이버 스페셜 다중 맵핑 파이프
+            btnTimesaver.addEventListener('click', function() {
+                isTimeSaverMode = true;
+                resetAllTabUIStyles();
+                btnTimesaver.classList.add('active');
+                
+                // 기존 요소 일체 선제 초기화
+                clearAllActiveOverlays();
+                document.getElementById('places-list').innerHTML = '';
+
+                // 비동기 통신 순차 누적 결합 연산 (세 카테고리 연속 호출 구조 구현)
+                setTimeout(function() {
+                    currentCategory = "AT4"; currentIcon = "🗼"; currentBorderClass = "attraction-border";
+                    triggerCategoryPipeline("AT4");
+                }, 0);
+
+                setTimeout(function() {
+                    currentCategory = "AD5"; currentIcon = "🛌"; currentBorderClass = "accommodation-border";
+                    triggerCategoryPipeline("AD5");
+                }, 200);
+
+                setTimeout(function() {
+                    currentCategory = "FD6"; currentIcon = "🍽️"; currentBorderClass = "restaurant-border";
+                    triggerCategoryPipeline("FD6");
+                }, 400);
+            });
         });
     </script>
 </body>
