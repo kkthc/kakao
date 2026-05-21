@@ -191,12 +191,19 @@
             border-left: 2px solid #e3dec9;
         }
 
+        /* ⭐️ 커스텀 오버레이 컨테이너 (말풍선 팝업을 내포하기 위해 상위 렐러티브 설정) */
+        .marker-wrapper {
+            position: relative;
+            width: 36px;
+            height: 36px;
+        }
+
         /* 커스텀 물방울 오버레이 마커 핀 스타일 */
         .travel-marker-pin {
             background: #ffffff;
             border: 3px solid #333333;
             border-radius: 50% 50% 50% 0;
-            transform: rotate(-45deg) translate(15px, -15px);
+            transform: rotate(-45deg);
             width: 36px;
             height: 36px;
             display: flex;
@@ -204,6 +211,9 @@
             justify-content: center;
             box-shadow: -3px 5px 10px rgba(0,0,0,0.22);
             cursor: pointer;
+            position: absolute;
+            bottom: 0;
+            left: 0;
         }
 
         .travel-marker-pin span {
@@ -216,423 +226,46 @@
         .travel-marker-pin.accommodation-border { border-color: #2ecc71; }
         .travel-marker-pin.restaurant-border { border-color: #f39c12; }
 
-        /* 사용자 위치 핀 레이아웃 정의 */
-        .user-center-pin {
-            background: #e26d5c;
-            border: 3px solid #ffffff;
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            box-shadow: 0 0 12px rgba(226, 109, 92, 0.8);
-            animation: pulseWave 2.2s infinite;
+        /* 💬 수제 커스텀 여행용 말풍선 디자인 (기본 닫힘 상태) */
+        .cute-info-bubble {
+            display: none;
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #ffffff;
+            padding: 12px;
+            border-radius: 16px;
+            border: 2.5px solid #333333;
+            font-size: 12px;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.18);
+            white-space: nowrap;
+            z-index: 999;
+            font-family: 'NanumSquareRound', sans-serif;
         }
 
-        @keyframes pulseWave {
-            0% { box-shadow: 0 0 0 0 rgba(226, 109, 92, 0.7); }
-            70% { box-shadow: 0 0 0 12px rgba(226, 109, 92, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(226, 109, 92, 0); }
+        /* 말풍선 아래쪽의 귀여운 꼬리 표현 */
+        .cute-info-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 8px 8px 0;
+            border-style: solid;
+            border-color: #ffffff transparent;
+            display: block;
+            width: 0;
         }
-    </style>
-</head>
-<body>
-
-    <div id="suitcase-frame">
-        <div id="sidebar">
-            <div id="nametag-header">
-                🧳 TIME-SAVER PACKING LIST
-            </div>
-            
-            <div id="search-box">
-                <input type="text" id="keyword" placeholder="어느 지역으로 여행을 떠나시나요?">
-                <button id="search-btn">출발 📍</button>
-            </div>
-            
-            <div class="tab-container">
-                <button class="tab-button active attraction" id="btn-attraction">🗼 관광명소<br>(AT4)</button>
-                <button class="tab-button accommodation" id="btn-accommodation">🛌 추천숙박<br>(AD5)</button>
-                <button class="tab-button restaurant" id="btn-restaurant">🍽️ 로컬맛집<br>(FD6)</button>
-                <button class="tab-button timesaver" id="btn-timesaver">⏱️ 타임세이버<br>(CORE)</button>
-            </div>
-
-            <div id="guide-panel">
-                <strong>🚦 광역 20KM 타임세이버 모드 작동</strong><br>
-                현재 지도 중심 기준 **반경 20KM** 내의 모든 데이터를 3페이지까지 통틀어 검색합니다. 4번째 탭은 20KM 이내에서 3대 인프라가 인접한 핵심 밀집 구역들을 찾아 <span style="color:#e26d5c; font-weight:bold;">붉은 원 영역</span>으로 색칠합니다.
-            </div>
-
-            <ul id="places-list">
-                </ul>
-        </div>
-        
-        <div id="map"></div>
-    </div>
-
-    <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=c25959bee4e8d99438d9beb94983a83b&libraries=services&autoload=false"></script>
-    
-    <script>
-        kakao.maps.load(function() {
-            const mapContainer = document.getElementById('map'); 
-            const mapOptions = {
-                center: new kakao.maps.LatLng(37.566826, 126.9786567), // 기본 중심 좌표 (서울시청)
-                level: 7 // 20KM 반경을 시원하게 조망하기 위해 초기 레벨을 7로 조정
-            };
-
-            const map = new kakao.maps.Map(mapContainer, mapOptions);
-            const placesService = new kakao.maps.services.Places();
-            
-            let customOverlays = []; // 화면용 수제 커스텀 마커 배열
-            let coloredCircles = []; // 4번째 탭 전용 색칠 영역 서클 배열
-            let activeInfoWindow = null; 
-            let userLocationOverlay = null; // 내 현재 위치 마커 객체
-            
-            // 다중 카테고리 기하학 연산을 위한 데이터 임시 버퍼 공간
-            let attractionPool = [];
-            let accommodationPool = [];
-            let restaurantPool = [];
-
-            let currentCategory = "AT4"; 
-            let currentIcon = "🗼";
-            let currentBorderClass = "attraction-border";
-            let isTimeSaverMode = false; 
-
-            // 실시간 대중교통 정보망 레이어 고정 연동
-            map.addOverlayMapTypeId(kakao.maps.MapTypeId.TRAFFIC);
-
-            // 초기 구동 시 유저 현재 위치 기반 세팅
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(function(position) {
-                    const lat = position.coords.latitude;
-                    const lon = position.coords.longitude;
-                    const userPosition = new kakao.maps.LatLng(lat, lon);
-
-                    map.setCenter(userPosition);
-
-                    userLocationOverlay = new kakao.maps.CustomOverlay({
-                        position: userPosition,
-                        content: '<div class="user-center-pin"></div>',
-                        xAnchor: 0.5, yAnchor: 0.5
-                    });
-                    userLocationOverlay.setMap(map);
-
-                    triggerWideSearchPipeline(currentCategory);
-                }, function(error) {
-                    console.warn("기본 지오로케이션 신호 없음. 기본 중심지로 연동 개시.");
-                    triggerWideSearchPipeline(currentCategory);
-                });
-            }
-
-            // 전국 단위 검색창 이벤트 바인딩
-            document.getElementById('search-btn').addEventListener('click', executeLocationSearch);
-            document.getElementById('keyword').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') executeLocationSearch();
-            });
-
-            function executeLocationSearch() {
-                const searchKeyword = document.getElementById('keyword').value;
-                if (!searchKeyword.trim()) {
-                    alert('탐색할 지역명을 입력해주세요!');
-                    return;
-                }
-                
-                // 텍스트 분석기를 통한 전국 지도 좌표 이동
-                placesService.keywordSearch(searchKeyword, function(data, status) {
-                    if (status === kakao.maps.services.Status.OK) {
-                        const targetPosition = new kakao.maps.LatLng(data[0].y, data[0].x);
-                        map.setCenter(targetPosition);
-                        map.setLevel(7); // 20KM 반경을 한눈에 보기 편하도록 지도 축소 레벨 고정
-
-                        // 이동된 중심지 기반으로 현재 눌려있는 탭 파이프라인 재가동
-                        if (isTimeSaverMode) {
-                            triggerTimeSaverPipeline();
-                        } else {
-                            triggerWideSearchPipeline(currentCategory);
-                        }
-                    } else {
-                        alert('해당 지역을 찾을 수 없습니다. 다시 명칭을 확인해주세요.');
-                    }
-                });
-            }
-
-            // ⭐️ 핵심 로직: 반경 20KM 내의 1~3페이지(최대 45개 결과) 데이터를 싹 다 긁어모으는 광역 파이프라인
-            function triggerWideSearchPipeline(categoryCode) {
-                const searchCenter = map.getCenter(); // 현재 지도의 중심점 기준
-                let accumulatedResults = []; // 데이터를 누적할 배열
-
-                // 내부 재귀 함수를 이용해 3페이지까지 동환 추적
-                function fetchNextPage(pageNumber) {
-                    placesService.categorySearch(categoryCode, function(data, status, pagination) {
-                        if (status === kakao.maps.services.Status.OK) {
-                            accumulatedResults = accumulatedResults.concat(data); // 데이터 결합
-                            
-                            // 다음 페이지가 있고, 3페이지 이하일 때까지만 계속 수집
-                            if (pagination.hasNextPage && pageNumber < 3) {
-                                fetchNextPage(pageNumber + 1);
-                            } else {
-                                // 3페이지까지의 수집이 완료되면 화면에 렌더링
-                                drawStandardDashboard(accumulatedResults);
-                            }
-                        } else {
-                            // 결과가 끊겼을 때도 지금까지 모인 게 있다면 출력
-                            if (accumulatedResults.length > 0) {
-                                drawStandardDashboard(accumulatedResults);
-                            } else if (!isTimeSaverMode) {
-                                document.getElementById('places-list').innerHTML = '<li style="text-align:center;color:#999;font-size:12px;">이 구역 주변 20KM 이내에는 정보가 없습니다.</li>';
-                                clearAllOverlays();
-                            }
-                        }
-                    }, {
-                        location: searchCenter,
-                        radius: 20000, // 🔴 요구사항 반영: 카카오 API 최대치인 반경 20KM(20,000m) 적용!
-                        sort: kakao.maps.services.SortBy.DISTANCE,
-                        page: pageNumber
-                    });
-                }
-
-                fetchNextPage(1); // 1페이지부터 스타트
-            }
-
-            // 표준 단일 카테고리 화면 렌더러
-            function drawStandardDashboard(places) {
-                const listContainer = document.getElementById('places-list');
-
-                if (!isTimeSaverMode) {
-                    clearAllOverlays();
-                    listContainer.innerHTML = '';
-                }
-
-                for (let i = 0; i < places.length; i++) {
-                    const placePosition = new kakao.maps.LatLng(places[i].y, places[i].x);
-                    generateTravelOverlay(placePosition, places[i]);
-                    
-                    const listItem = appendLuggageListItem(places[i]);
-
-                    listItem.onclick = function() {
-                        map.setCenter(placePosition);
-                        map.setLevel(4);
-                    };
-                    listContainer.appendChild(listItem);
-                }
-            }
-
-            // ⏱️ 4번째 탭: 20KM 반경 내 대량 데이터를 융합 분석하는 광역 타임세이버 엔진
-            function triggerTimeSaverPipeline() {
-                isTimeSaverMode = true;
-                clearAllOverlays();
-                document.getElementById('places-list').innerHTML = '';
-
-                attractionPool = []; accommodationPool = []; restaurantPool = [];
-                const pipelineCenter = map.getCenter();
-
-                // 20KM 반경 내 명소(AT4) 3페이지 긁어오기
-                fetchAllPagesData("AT4", pipelineCenter, function(attractions) {
-                    attractionPool = attractions;
-                    
-                    // 20KM 반경 내 숙소(AD5) 3페이지 긁어오기
-                    fetchAllPagesData("AD5", pipelineCenter, function(accommodations) {
-                        accommodationPool = accommodations;
-                        
-                        // 20KM 반경 내 맛집(FD6) 3페이지 긁어오기
-                        fetchAllPagesData("FD6", pipelineCenter, function(restaurants) {
-                            restaurantPool = restaurants;
-                            
-                            // 3대 광역 데이터 셋팅 완료 시 중심지 시각화 엔진 가동
-                            calculateCoreDensityZones();
-                        });
-                    });
-                });
-            }
-
-            // 타임세이버 탭 전용 3페이지 데이터 통합 수집 유틸리티 함수
-            function fetchAllPagesData(categoryCode, center, callback) {
-                let completeData = [];
-                function gather(page) {
-                    placesService.categorySearch(categoryCode, function(data, status, pagination) {
-                        if (status === kakao.maps.services.Status.OK) {
-                            completeData = completeData.concat(data);
-                            if (pagination.hasNextPage && page < 3) {
-                                gather(page + 1);
-                            } else {
-                                callback(completeData);
-                            }
-                        } else {
-                            callback(completeData);
-                        }
-                    }, { location: center, radius: 20000, page: page, sort: kakao.maps.services.SortBy.DISTANCE });
-                }
-                gather(1);
-            }
-
-            // 두 좌표 간의 거리 연산 수학 공식 (미터 단위 반환)
-            function computeGeodeticDistance(lat1, lon1, lat2, lon2) {
-                const theta = lon1 - lon2;
-                let distance = Math.sin(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180) + 
-                               Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.cos(theta * Math.PI / 180);
-                distance = Math.acos(distance);
-                distance = (distance * 180 / Math.PI) * 60 * 1.1515 * 1609.344;
-                return distance;
-            }
-
-            // 🔴 광역 매칭 분석 및 중심지 색칠 크로스 엔진
-            function calculateCoreDensityZones() {
-                const listContainer = document.getElementById('places-list');
-                let coreMatches = [];
-
-                // 20KM 광역 스케일에 맞춰, 명소 주변 2.5KM 이내에 숙소와 맛집이 모두 연동되는 최적 거점 탐색
-                for (let i = 0; i < attractionPool.length; i++) {
-                    const targetAttr = attractionPool[i];
-                    
-                    const hasAccom = accommodationPool.some(function(accom) {
-                        return computeGeodeticDistance(targetAttr.y, targetAttr.x, accom.y, accom.x) <= 2500;
-                    });
-
-                    const hasRest = restaurantPool.some(function(rest) {
-                        return computeGeodeticDistance(targetAttr.y, targetAttr.x, rest.y, rest.x) <= 2500;
-                    });
-
-                    if (hasAccom && hasRest) {
-                        coreMatches.push(targetAttr);
-                    }
-                }
-
-                // 매칭된 거점 구역이 존재할 경우 하이라이트 원형 음영 마운트
-                if (coreMatches.length > 0) {
-                    for (let j = 0; j < coreMatches.length; j++) {
-                        const matchedItem = coreMatches[j];
-                        const centerLatLng = new kakao.maps.LatLng(matchedItem.y, matchedItem.x);
-
-                        // 🔴 요구사항 반영: 조건이 만족된 밀집 구역 중심지를 붉은 원으로 투명하게 색칠!
-                        const densityShadingCircle = new kakao.maps.Circle({
-                            center: centerLatLng,
-                            radius: 1200, // 광역 지도 스케일에 맞게 시각화 서클 크기도 1.2KM 반경으로 보정
-                            strokeWeight: 3,
-                            strokeColor: '#e26d5c',
-                            strokeOpacity: 0.7,
-                            strokeStyle: 'dashed',
-                            fillColor: '#e26d5c',
-                            fillOpacity: 0.2
-                        });
-
-                        densityShadingCircle.setMap(map);
-                        coloredCircles.push(densityShadingCircle);
-                    }
-
-                    // 수집된 광역 풀 데이터를 화면에 조합 출력
-                    currentCategory = "AT4"; currentIcon = "🗼"; currentBorderClass = "attraction-border";
-                    drawStandardDashboard(coreMatches);
-                    
-                    currentCategory = "AD5"; currentIcon = "🛌"; currentBorderClass = "accommodation-border";
-                    drawStandardDashboard(accommodationPool.slice(0, 10)); 
-                    
-                    currentCategory = "FD6"; currentIcon = "🍽️"; currentBorderClass = "restaurant-border";
-                    drawStandardDashboard(restaurantPool.slice(0, 15));
-                    
-                } else {
-                    listContainer.innerHTML = '<li style="text-align:center;color:#999;font-size:12px;">이 지역 주변 20KM 이내에는 3대 인프라가 상호 밀집한 코어존이 없습니다. 다른 관광 도시를 검색해 보세요!</li>';
-                }
-            }
-
-            // 이모지 수제 커스텀 오버레이 마커 핀 생산 모듈
-            function generateTravelOverlay(position, place) {
-                const pinNode = document.createElement('div');
-                pinNode.className = `travel-marker-pin ${currentBorderClass}`;
-                
-                const iconInner = document.createElement('span');
-                iconInner.innerText = currentIcon;
-                pinNode.appendChild(iconInner);
-
-                const bubbleBox = document.createElement('div');
-                bubbleBox.style.cssText = 'background:#ffffff; padding:12px; border-radius:14px; border:2px solid #333; font-size:12px; box-shadow:0 4px 10px rgba(0,0,0,0.15); white-space:nowrap; font-family:NanumSquareRound;';
-                bubbleBox.innerHTML = `
-                    <strong style="color:#e26d5c; font-size:13px;">${place.place_name}</strong><br>
-                    <span style="color:#777; font-size:11px; display:inline-block; margin:4px 0;">${place.road_address_name || place.address_name}</span><br>
-                    <span style="color:#2ecc71; font-weight:bold;">⏱️ 중심점 기준거리: ${place.distance}m</span>
-                `;
-
-                const infoBubble = new kakao.maps.InfoWindow({
-                    content: bubbleBox, removable: true
-                });
-
-                pinNode.addEventListener('click', function() {
-                    if (activeInfoWindow) activeInfoWindow.close();
-                    infoBubble.open(map, markerOverlayInstance);
-                    activeInfoWindow = infoBubble;
-                    map.setCenter(position);
-                });
-
-                const markerOverlayInstance = new kakao.maps.CustomOverlay({
-                    position: position, content: pinNode, yAnchor: 1 
-                });
-
-                markerOverlayInstance.setMap(map);
-                customOverlays.push(markerOverlayInstance); 
-            }
-
-            // 탭 이동 및 재검색 시 잔상 제거용 클리어 함수
-            function clearAllOverlays() {
-                if (activeInfoWindow) activeInfoWindow.close();
-                
-                for (let i = 0; i < customOverlays.length; i++) {
-                    customOverlays[i].setMap(null);
-                }
-                customOverlays = [];
-
-                for (let j = 0; j < coloredCircles.length; j++) {
-                    coloredCircles[j].setMap(null);
-                }
-                coloredCircles = [];
-            }
-
-            function appendLuggageListItem(place) {
-                const li = document.createElement('li');
-                const addressText = place.road_address_name ? place.road_address_name : place.address_name;
-                
-                li.innerHTML = `
-                    <h5>${currentIcon} ${place.place_name}</h5>
-                    <span>${addressText}</span><br>
-                    <span style="color:#e26d5c; font-size:11px; display:inline-block; margin-top:6px; font-weight:bold;">🏃 중심거리: ${place.distance}m</span>
-                `;
-                return li;
-            }
-
-            // 대시보드 탭 제어 스위치 그룹
-            const btnAttraction = document.getElementById('btn-attraction');
-            const btnAccommodation = document.getElementById('btn-accommodation');
-            const btnRestaurant = document.getElementById('btn-restaurant');
-            const btnTimesaver = document.getElementById('btn-timesaver');
-
-            function resetAllTabUIStyles() {
-                btnAttraction.className = "tab-button attraction";
-                btnAccommodation.className = "tab-button accommodation";
-                btnRestaurant.className = "tab-button restaurant";
-                btnTimesaver.className = "tab-button timesaver";
-            }
-
-            btnAttraction.addEventListener('click', function() {
-                isTimeSaverMode = false; resetAllTabUIStyles();
-                btnAttraction.className = "tab-button active attraction";
-                currentCategory = "AT4"; currentIcon = "🗼"; currentBorderClass = "attraction-border";
-                triggerWideSearchPipeline(currentCategory);
-            });
-
-            btnAccommodation.addEventListener('click', function() {
-                isTimeSaverMode = false; resetAllTabUIStyles();
-                btnAccommodation.className = "tab-button active accommodation";
-                currentCategory = "AD5"; currentIcon = "🛌"; currentBorderClass = "accommodation-border";
-                triggerWideSearchPipeline(currentCategory);
-            });
-
-            btnRestaurant.addEventListener('click', function() {
-                isTimeSaverMode = false; resetAllTabUIStyles();
-                btnRestaurant.className = "tab-button active restaurant";
-                currentCategory = "FD6"; currentIcon = "🍽️"; currentBorderClass = "restaurant-border";
-                triggerWideSearchPipeline(currentCategory);
-            });
-
-            btnTimesaver.addEventListener('click', function() {
-                resetAllTabUIStyles();
-                btnTimesaver.className = "tab-button active timesaver";
-                triggerTimeSaverPipeline();
-            });
-        });
-    </script>
-</body>
-</html>
+        .cute-info-bubble::before {
+            content: '';
+            position: absolute;
+            bottom: -11px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 9px 9px 0;
+            border-style: solid;
+            border-color: #333333 transparent;
+            display: block;
+            width: 0;
+            z-index: -1
